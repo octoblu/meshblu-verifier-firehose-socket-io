@@ -9,7 +9,7 @@ request       = require 'request'
 packageJSON = require './package.json'
 Verifier    = require './src/verifier'
 
-VERIFIER_NAME ='meshblu-verifier-socket-io'
+VERIFIER_NAME ='meshblu-verifier-firehose-socket-io'
 debug         = require('debug')("#{VERIFIER_NAME}:command")
 
 OPTIONS = [
