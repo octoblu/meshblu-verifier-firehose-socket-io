@@ -1,6 +1,6 @@
 {
   "name": "meshblu-verifier-firehose-socket-io",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Verify Meshblu Firehose over socket.io",
   "main": "index.js",
   "scripts": {
@@ -33,6 +33,7 @@
     "mocha-multi": "^0.9.1",
     "mocha-osx-reporter": "^0.1.2",
     "nyc": "^8.3.0",
+    "server-destroy": "^1.0.1",
     "shmock": "^0.8.1",
     "sinon": "^1.17.2",
     "sinon-chai": "^2.8.0",
@@ -47,7 +48,8 @@
     "lodash": "^4.16.6",
     "meshblu": "^2.0.2",
     "meshblu-config": "^6.0.0",
-    "meshblu-firehose-socket.io": "^2.0.3",
+    "meshblu-firehose-socket.io": "^2.1.0",
+    "meshblu-http": "^9.5.0",
     "moment": "^2.14.1",
     "request": "^2.74.0"
   },

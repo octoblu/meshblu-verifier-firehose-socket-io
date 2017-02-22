@@ -1,41 +1,49 @@
-_       = require 'lodash'
 async   = require 'async'
-Meshblu = require 'meshblu'
+MeshbluHttp = require 'meshblu-http'
 MeshbluFirehose = require 'meshblu-firehose-socket.io'
 
+ErrorReporter = require './error-reporter'
+
 class Verifier
-  constructor: ({@meshbluConfig, @onError, @nonce}) ->
-    @nonce ?= Date.now()
+  constructor: ({@meshbluConfig, @onError, @nonce}, {@meshblu, @firehose}={}) ->
+    @nonce    ?= Date.now()
+    @meshblu  ?= new MeshbluHttp @meshbluConfig
+    @firehose ?= new MeshbluFirehose { @meshbluConfig, transports: ['polling'] }
 
   verify: (callback) =>
     async.series [
       @_connect
       @_message
-    ], (error) =>
-      @meshblu.close()
-      callback error
+      @_disconnect
+    ], callback
 
   _connect: (callback) =>
-    callback = _.once callback
-    @meshblu = new Meshblu @meshbluConfig
-    @firehose = new MeshbluFirehose { @meshbluConfig }
-    @meshblu.once 'notReady', (error) =>
-      error = new Error "Meshblu Error: #{error.status}"
-      error.code = error.status
-      callback error
-    @meshblu.connect (error) =>
-      return callback error if error?
-      @firehose.connect callback
+    reporter = new ErrorReporter {callback}
+
+    @firehose.once 'connect_error', reporter.report
+    @firehose.once 'reconnect_error', reporter.report
+    @firehose.connect reporter.report
+
+  _disconnect: (callback) =>
+    reporter = new ErrorReporter {callback}
+
+    @firehose.once 'connect_error', reporter.report
+    @firehose.once 'reconnect_error', reporter.report
+    @firehose.close reporter.report
 
   _message: (callback) =>
+    reporter = new ErrorReporter {callback}
+
+    @firehose.once 'connect_error', reporter.report
+    @firehose.once 'reconnect_error', reporter.report
     @firehose.once 'message', ({data}) =>
-      return callback new Error 'wrong message received' unless data?.payload == @nonce
-      callback()
+      return reporter.report(new Error 'wrong message received') unless data?.payload == @nonce
+      reporter.report()
 
     message =
       devices: [@meshbluConfig.uuid]
       payload: @nonce
 
-    @meshblu.message message
+    @meshblu.message message, reporter.report
 
 module.exports = Verifier

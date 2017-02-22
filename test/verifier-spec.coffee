@@ -1,67 +1,79 @@
 {afterEach, beforeEach, context, describe, it} = global
 {expect} = require 'chai'
+MeshbluHttp = require 'meshblu-http'
+MeshbluFirehose = require 'meshblu-firehose-socket.io'
+enableDestroy = require 'server-destroy'
+shmock = require 'shmock'
 sinon = require 'sinon'
 
 Verifier = require '../src/verifier'
-MockMeshbluSocketIO = require './mock-meshblu-socket-io'
 MockMeshbluFirehoseSocketIO = require './mock-meshblu-firehose-socket-io'
 
 describe 'Verifier', ->
-  beforeEach (done) ->
+  beforeEach ->
     @nonce = Date.now()
     @firehoseMessageHandler = sinon.stub()
 
-  beforeEach (done) ->
-    @identityHandler = sinon.spy ->
-      @emit 'ready', uuid: 'some-device', token: 'some-token'
-
-    onConnection = (socket) =>
-      socket.on 'message', (data) =>
-        @messageHandler data, (response) =>
-          @firehoseSocket.emit 'message', response
-      socket.on 'error', (error) ->
-        throw error
-
-      socket.on 'identity', @identityHandler
-      socket.emit 'identify'
-
-    @meshblu = new MockMeshbluSocketIO port: 0xd00d, onConnection: onConnection
-    @meshblu.start done
+  beforeEach ->
+    @meshblu = shmock()
+    enableDestroy @meshblu
 
   beforeEach (done) ->
     onConnection = (@firehoseSocket) =>
-      socket.on 'error', (error) ->
+      @firehoseSocket.on 'error', (error) ->
         throw error
 
     @firehose = new MockMeshbluFirehoseSocketIO port: 0xd11d, onConnection: onConnection
     @firehose.start done
 
-  afterEach (done) ->
-    @timeout 100
-    @meshblu.stop => done()
+  afterEach 'stop the firehose', (done) ->
+    @firehose.destroy done
 
-  xdescribe '->verify', ->
+  afterEach 'stop meshblu http', (done) ->
+    @meshblu.destroy done
+
+  describe '->verify', ->
     beforeEach ->
-      meshbluConfig = protocol: 'ws', hostname: 'localhost', port: 0xd00d, resolveSrv: false
-      @sut = new Verifier {meshbluConfig, @nonce}
+      firehose = new MeshbluFirehose meshbluConfig: {
+        uuid: 'the-uuid'
+        token: 'the-token'
+        protocol: 'ws'
+        hostname: 'localhost'
+        port: 0xd11d
+        resolveSrv: false
+      }
+      meshblu  = new MeshbluHttp {
+        protocol: 'http'
+        hostname: 'localhost'
+        port: @meshblu.address().port
+        resolveSrv: false
+      }
+
+      @sut = new Verifier {meshbluConfig: {}, @nonce}, {firehose, meshblu}
 
     context 'when everything works', ->
-      beforeEach 'yielding a bunch', ->
-        @messageHandler.yields payload: @nonce
+      beforeEach 'message succeeds', ->
+        @sendMessage = @meshblu
+          .post '/messages'
+          .reply 201, {}
 
       beforeEach 'verify', (done) ->
         @sut.verify done
 
-      it 'should have called all the handlers', ->
-        expect(@messageHandler).to.be.called
+      it 'should have sent a message', ->
+        expect(@sendMessage.isDone).to.be.true
 
     context 'when message fails', ->
       beforeEach (done) ->
-        @messageHandler.yields error: 'something wrong'
+        @sendMessage = @meshblu
+          .post '/messages'
+          .reply 500, {error: 'something wrong'}
 
         @sut.verify (@error) =>
           done()
 
+      it 'should have sent a message', ->
+        expect(@sendMessage.isDone).to.be.true
+
       it 'should error', ->
         expect(@error).to.exist
-        expect(@messageHandler).to.be.called

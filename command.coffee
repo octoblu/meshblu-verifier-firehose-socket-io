@@ -124,6 +124,7 @@ class Command
       json:
         success: !error?
         expires: moment().add(@log_expiration, 'seconds')
+        createdAt: moment()
         error:
           message: error?.message
     }, (httpError, response) =>
