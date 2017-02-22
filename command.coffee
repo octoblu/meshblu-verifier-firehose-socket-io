@@ -55,6 +55,13 @@ OPTIONS = [
     default: 30
   }
   {
+    names: ['transports', 'T']
+    type: 'arrayOfString'
+    env: 'TRANSPORTS'
+    help: 'comma separated list of transport overrides'
+    default: ['polling', 'websocket']
+  }
+  {
     names: ['version', 'v']
     type: 'bool'
     help: 'Print the version and exit.'
@@ -73,6 +80,7 @@ class Command
       @forever,
       @interval,
       @timeout,
+      @transports,
     } = options
 
   printHelp: =>
@@ -115,7 +123,7 @@ class Command
 
   _runOnce: (callback) =>
     meshbluConfig = new MeshbluConfig().toJSON()
-    verifier = new Verifier {meshbluConfig}
+    verifier = new Verifier {meshbluConfig, @transports}
     verifier.verify callback
 
   logResult: (error, callback) =>

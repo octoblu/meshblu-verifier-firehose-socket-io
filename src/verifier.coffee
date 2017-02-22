@@ -5,10 +5,10 @@ MeshbluFirehose = require 'meshblu-firehose-socket.io'
 ErrorReporter = require './error-reporter'
 
 class Verifier
-  constructor: ({@meshbluConfig, @onError, @nonce}, {@meshblu, @firehose}={}) ->
+  constructor: ({@meshbluConfig, @nonce, @onError, @transports}, {@meshblu, @firehose}={}) ->
     @nonce    ?= Date.now()
     @meshblu  ?= new MeshbluHttp @meshbluConfig
-    @firehose ?= new MeshbluFirehose { @meshbluConfig, transports: ['polling'] }
+    @firehose ?= new MeshbluFirehose { @meshbluConfig, transports: @transports }
 
   verify: (callback) =>
     async.series [
