@@ -135,12 +135,7 @@ class Command
         createdAt: moment()
         error:
           message: error?.message
-    }, (httpError, response) =>
-      debug 'log results http error', httpError, response?.statusCode
-      error ?= httpError
-      @print error
-      return callback error if error?
-      callback null
+    }, callback
 
   print: (error) =>
     return console.log "#{VERIFIER_NAME} successful" unless error?
